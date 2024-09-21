@@ -1,7 +1,5 @@
 from typing import List
 
-from PIL.ImageColor import colormap
-
 
 class Solver:
     def __init__(self, cube):

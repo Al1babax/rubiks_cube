@@ -1,4 +1,3 @@
-from idlelib.debugobj import make_objecttreeitem
 from typing import List
 from random import choice
 from color import Colors
