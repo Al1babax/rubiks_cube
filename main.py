@@ -8,6 +8,5 @@ def main():
     solver.solve()
     rubiks_cube.controls()
 
-
 if __name__ == '__main__':
     main()
