@@ -1,7 +1,7 @@
 from typing import List
 
 
-class Solver:
+class SolverC:
     def __init__(self, cube):
         self.cube = cube
         self.white_targets = ["W2", "W4", "W6", "W8"]
@@ -10,6 +10,15 @@ class Solver:
             "top": 180,
             "right": 90,
             "bottom": 0
+        }
+        self.sides_dict = {
+            "top": (0, 1),
+            "left": (1, 0),
+            "front": (1, 1),
+            "right": (1, 2),
+            "back1": (1, 3),
+            "bottom": (2, 1),
+            "back2": (3, 1)
         }
 
     def left_algorithm(self):
@@ -39,7 +48,7 @@ class Solver:
         if self.cube.get_side("front")[1][1] == target:
             return
 
-        for side, pos in self.cube.sides_dict.items():
+        for side, pos in self.sides_dict.items():
             for row in self.cube.get_side(side):
                 if target in row:
                     commands = directions[side]
@@ -59,18 +68,18 @@ class Solver:
             items_found = []
 
             # Look for all the targets
-            for col, cell in enumerate(self.cube.cube[row]):
+            for col, cell in enumerate(self.cube.get_cube()[row]):
                 if cell in self.white_targets:
                     items_found.append(cell)
 
             # if only one target is found, shift that line to right until the target is in front side
             if len(items_found) == 0:
                 continue
-            elif self.cube.cube[row][4] in self.white_targets:
+            elif self.cube.get_cube()[row][4] in self.white_targets:
                 continue
 
             # rotate that line until the target is in front
-            while self.cube.cube[row][4] != items_found[0]:
+            while self.cube.get_cube()[row][4] != items_found[0]:
                 freebies_found = 1
                 self.cube.slide_long("right", row, row)
 
@@ -79,15 +88,15 @@ class Solver:
             items_found = []
 
             for row in range(12):
-                if self.cube.cube[row][col] in self.white_targets:
-                    items_found.append(self.cube.cube[row][col])
+                if self.cube.get_cube()[row][col] in self.white_targets:
+                    items_found.append(self.cube.get_cube()[row][col])
 
             if len(items_found) == 0:
                 continue
-            elif self.cube.cube[4][col] in self.white_targets:
+            elif self.cube.get_cube()[4][col] in self.white_targets:
                 continue
 
-            while self.cube.cube[4][col] != items_found[0]:
+            while self.cube.get_cube()[4][col] != items_found[0]:
                 freebies_found = 1
                 self.cube.slide_long("down", col, col)
 
@@ -98,7 +107,7 @@ class Solver:
             # Find the last missing target
             targets = ["W2", "W4", "W6", "W8"]
 
-            for side in self.cube.sides_dict.keys():
+            for side in self.sides_dict.keys():
                 if side == "front":
                     continue
 
@@ -122,7 +131,7 @@ class Solver:
             perspective_changed = 1
 
         # First rotate the center to point at missing target
-        relative_position = self.cube.sides_dict[last_target[1]]
+        relative_position = self.sides_dict[last_target[1]]
         while self.cube.get_side("front")[relative_position[0]][relative_position[1]] in self.white_targets:
             self.cube.rotate_big("front")
 
@@ -211,14 +220,14 @@ class Solver:
                 row, col = values[3]
 
                 # Check that side has target
-                if self.cube.cube[row][col] not in self.white_targets:
+                if self.cube.get_cube()[row][col] not in self.white_targets:
                     continue
 
                 sq1_r, sq1_c = values[1]
                 sq2_r, sq2_c = values[2]
 
                 # Check if side is aligned
-                if self.cube.cube[sq1_r][sq1_c][0] != self.cube.cube[sq2_r][sq2_c][0]:
+                if self.cube.get_cube()[sq1_r][sq1_c][0] != self.cube.get_cube()[sq2_r][sq2_c][0]:
                     continue
 
                 # Move the target
@@ -237,7 +246,7 @@ class Solver:
         target_positions = []
         for row in range(len(matrix)):
             for col in range(len(matrix[0])):
-                if matrix[row][col] == "":
+                if matrix[row][col] == "-":
                     continue
 
                 if matrix[row][col][0] == target:
@@ -246,7 +255,7 @@ class Solver:
         return target_positions
 
     def rotate_matrix(self, matrix: List[List]) -> List[List]:
-        while matrix[1][0] != "":
+        while matrix[1][0] != "-":
             matrix = [list(row) for row in zip(*matrix[::-1])]
 
         return matrix
@@ -280,7 +289,7 @@ class Solver:
             side = "bottom_left" if target_pos[1] < 3 else "bottom_right"
 
         side_pos = neighbor_dir[side]
-        area = [row[side_pos[1]:side_pos[1] + 2] for row in self.cube.cube[side_pos[0]:side_pos[0] + 2]]
+        area = [row[side_pos[1]:side_pos[1] + 2] for row in self.cube.get_cube()[side_pos[0]:side_pos[0] + 2]]
 
         # Get neighbours
         neighbours = []
@@ -288,7 +297,7 @@ class Solver:
         for row in range(len(area)):
             for col in range(len(area[0])):
                 cell = area[row][col]
-                if cell == "":
+                if cell == "-":
                     continue
                 elif cell[0] != "W":
                     neighbours.append(cell)
@@ -321,14 +330,14 @@ class Solver:
     def move_to_front(self, center):
         # Move right 4 times
         for _ in range(4):
-            if self.cube.cube[4][4] == center:
+            if self.cube.get_cube()[4][4] == center:
                 return
 
             self.cube.change_perspective("right")
 
         # Move up 4 times
         for _ in range(4):
-            if self.cube.cube[4][4] == center:
+            if self.cube.get_cube()[4][4] == center:
                 return
 
             self.cube.change_perspective("up")
@@ -352,8 +361,8 @@ class Solver:
 
         # Move white to bottom until rogue white on either slide, then if rogue in slide1 do lefty algo and slide2 right
         while True:
-            slide1 = [row[2] for row in self.cube.cube[3:6]]
-            slide2 = [row[6] for row in self.cube.cube[3:6]]
+            slide1 = [row[2] for row in self.cube.get_cube()[3:6]]
+            slide2 = [row[6] for row in self.cube.get_cube()[3:6]]
 
             for cell in slide1:
                 if cell[0] == "W":
@@ -376,7 +385,7 @@ class Solver:
 
         while True:
             # Look for white corner piece
-            big_area = [row[2:7] for row in self.cube.cube[2:7]]
+            big_area = [row[2:7] for row in self.cube.get_cube()[2:7]]
             targets = self.find_target_pos(big_area, "W")
 
             # if no targets are found check if white side is done, if not find the rogue square and move it to middle
@@ -386,7 +395,6 @@ class Solver:
 
                 # Perform algo here to move the rogue square
                 # self.cube.show()
-                # print("One of the corners is wrong aka rogue")
 
                 self.fix_rogue()
                 # self.cube.show()
@@ -436,7 +444,6 @@ class Solver:
                     }
                     correct_side = up_dict[corner_pos]
 
-                # print(correct_side)
                 # Change perspective
                 persp_dict = {
                     "top": "down",
@@ -483,9 +490,9 @@ class Solver:
         }
 
         for edge, positions in pairs.items():
-            edge_piece_1 = (self.cube.cube[positions[0][0]][positions[0][1]])
-            edge_piece_2 = (self.cube.cube[positions[1][0]][positions[1][1]])
-            center_piece = (self.cube.cube[positions[2][0]][positions[2][1]])
+            edge_piece_1 = (self.cube.get_cube()[positions[0][0]][positions[0][1]])
+            edge_piece_2 = (self.cube.get_cube()[positions[1][0]][positions[1][1]])
+            center_piece = (self.cube.get_cube()[positions[2][0]][positions[2][1]])
 
             # Skip yellow edge
             if edge_piece_1[0] == "Y" or edge_piece_2[0] == "Y":
@@ -516,7 +523,6 @@ class Solver:
         return ""
 
     def fix_second(self, fix_info):
-        # print(fix_info)
         self.change_side_and_rotate(fix_info, self.rotation_dir[fix_info])
 
         # Check which side algorithm to perform
@@ -530,12 +536,12 @@ class Solver:
 
     def second_layer_algo(self, side):
         if side == "left":
-            self.cube.slide_long("right", 3)
+            self.cube.slide_long("right", 3, 3)
             self.left_algorithm()
             self.cube.change_perspective("right")
             self.right_algorithm()
         elif side == "right":
-            self.cube.slide_long("left", 3)
+            self.cube.slide_long("left", 3, 3)
             self.right_algorithm()
             self.cube.change_perspective("left")
             self.left_algorithm()
@@ -543,7 +549,6 @@ class Solver:
     def second_layer(self):
         # Loop over the 4 pedals of Y and search edge that has both sides non yellow
         # After rotate front until the edge counter square matches with the center
-        # print(new_edge, edge_positions)
         self.move_to_front("Y5")
         rotate_counter = 0
 
@@ -562,14 +567,13 @@ class Solver:
 
             rotate_counter = 0
             new_edge, edge_positions = edge_info[0], edge_info[1]
-            # print(new_edge, edge_positions)
 
             self.change_side_and_rotate(new_edge, self.rotation_dir[new_edge])
 
             # Based on where the edge needs to be moved run certain algorithm
-            if self.cube.cube[2][4][0] == self.cube.cube[4][1][0]:
+            if self.cube.get_cube()[2][4][0] == self.cube.get_cube()[4][1][0]:
                 self.second_layer_algo("left")
-            elif self.cube.cube[2][4][0] == self.cube.cube[4][7][0]:
+            elif self.cube.get_cube()[2][4][0] == self.cube.get_cube()[4][7][0]:
                 self.second_layer_algo("right")
 
             self.move_to_front("Y5")
@@ -577,7 +581,6 @@ class Solver:
         # If second layer is not done after easy moves, fix wrong edge and try again
         fix_info = self.is_second_done()
         if fix_info != "":
-            # print("layer not done")
             self.fix_second(fix_info)
             self.second_layer()
 
@@ -633,7 +636,6 @@ class Solver:
                 current_big_symbol = "dot"
 
         # if 1 in index_with_yellow and
-        # print(current_big_symbol)
         find_hooks([1, 1], front_side, [])
         print(yellow_hooks)
 
@@ -660,11 +662,10 @@ class Solver:
         self.white_cross()
 
         # White corners
-
-        # self.white_corners()
+        self.white_corners()
 
         # Second layer
-        # self.second_layer()
+        self.second_layer()
 
         # Yellow cross
         # self.yellow_cross()
