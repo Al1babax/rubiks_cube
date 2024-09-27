@@ -24,6 +24,7 @@ def main_c():
 
     solver = SolverC(rubiks_cube)
     solver.solve()
+    rubiks_cube.controls()
     # rubiks_cube.show()
 
 @time_it
@@ -33,9 +34,10 @@ def main():
 
     solver = Solver(rubiks_cube)
     solver.solve()
+    rubiks_cube.controls()
     # rubiks_cube.show()
 
 
 if __name__ == '__main__':
     main()
-    main_c()
+    # main_c()

@@ -435,6 +435,7 @@ class SolverC:
                         if target_symbol in row:
                             correct_side = corner_pos.split("_")[0]
                             break
+
                 elif corner_info[1] == "up":
                     up_dict = {
                         "top_left": "top",
@@ -588,7 +589,9 @@ class SolverC:
         yellow_hooks = []
 
         def find_hooks(cur_pos: List, matrix: List[List], visited_nodes: List):
-            if len(visited_nodes) == 3:
+            if len(yellow_hooks) != 0:
+                return False
+            elif len(visited_nodes) == 3:
                 yellow_hooks.append(visited_nodes.copy())
                 visited_nodes.pop()
                 return True
@@ -608,15 +611,19 @@ class SolverC:
             dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)]
             for direction in dirs:
                 new_pos = [cur_pos[0] + direction[0], cur_pos[1] + direction[1]]
-                if find_hooks(new_pos, matrix, visited_nodes):
+                result = find_hooks(new_pos, matrix, visited_nodes)
+                if result:
                     visited_nodes.pop()
                     return
+                elif result is False:
+                    return
+
 
         self.move_to_front("Y5")
 
         # Check if yellow cross already exists
         # Symbols can be --> dot, hook, line, cross
-        current_big_symbol = "cross"
+        current_big_symbol = "dot"
         index_with_yellow = []
         front_side = self.cube.get_side("front")
 
@@ -630,16 +637,37 @@ class SolverC:
                 if front_side[row][col][0] == "Y":
                     index_with_yellow.append(order_num - 1)
 
-        # Check if cross found
-        for num in [1, 3, 5, 7]:
-            if num not in index_with_yellow:
-                current_big_symbol = "dot"
 
-        # if 1 in index_with_yellow and
         find_hooks([1, 1], front_side, [])
-        print(yellow_hooks)
 
-        # DO something with the hooks
+        # Find symbol from worst to best
+        if len(yellow_hooks) != 0:
+            current_big_symbol = "hook"
+
+        # Check for line
+        vertical_line = False
+        horizontal_line = False
+        if 1 in index_with_yellow and 7 in index_with_yellow:
+            current_big_symbol = "line"
+            horizontal_line = True
+        if 3 in index_with_yellow and 5 in index_with_yellow:
+            current_big_symbol = "line"
+            vertical_line = True
+
+        if horizontal_line and vertical_line:
+            current_big_symbol = "cross"
+
+        match current_big_symbol:
+            case "cross":
+                return
+            case "line":
+                pass
+            case "hook":
+                pass
+            case "dot":
+                pass
+
+        print(current_big_symbol)
 
     def third_layer(self):
         cur_front = self.cube.get_side("front")
@@ -668,7 +696,8 @@ class SolverC:
         self.second_layer()
 
         # Yellow cross
-        # self.yellow_cross()
+        self.yellow_cross()
+        self.cube.show()
 
         # Third layer
         # self.third_layer()
