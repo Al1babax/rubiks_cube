@@ -693,7 +693,17 @@ class Solver:
                 self.yellow_cross()
 
     def niklas(self):
-        pass
+        self.cube.slide_long("up", 5, 5)
+        for _ in range(3):
+            self.cube.rotate_big("front")
+
+        self.cube.slide_long("up", 3, 3)
+        self.cube.rotate_big("front")
+        self.cube.slide_long("down", 5, 5)
+        for _ in range(3):
+            self.cube.rotate_big("front")
+
+        self.cube.slide_long("down", 3, 3)
 
     def sune(self):
         self.cube.slide_long("up", 5, 5)
@@ -743,7 +753,7 @@ class Solver:
 
         return aligned_edges
 
-    def third_layer(self):
+    def align_third_layer_edges(self):
         # Rotate the front until at least two top layer edges match
         while True:
             matching_top_edges = self.top_layer_edges()
@@ -753,8 +763,158 @@ class Solver:
 
             self.cube.rotate_big("front")
 
-        print(matching_top_edges)
+        if len(matching_top_edges) == 4:
+            return
 
+        # Do sune algo to get two adjacent matching edges
+        if "top" in matching_top_edges and "bottom" in matching_top_edges:
+            self.sune()
+        elif "left" in matching_top_edges and "right" in matching_top_edges:
+            self.cube.rotate_whole()
+            self.sune()
+
+        # Rotate the cube until matching edges are on top and right
+        while "top" not in matching_top_edges or "right" not in matching_top_edges:
+            self.cube.rotate_whole()
+            matching_top_edges = self.top_layer_edges()
+
+        self.sune()
+
+        while len(matching_top_edges) < 4 and len(matching_top_edges) != 0:
+            self.cube.rotate_big("front")
+            matching_top_edges = self.top_layer_edges()
+
+    def get_correct_yellow_corners(self) -> List[str]:
+        # Get all the corners that are in right spot
+        correct_corners = []
+        dir_dict = {
+            0: "top-left",
+            1: "bottom-left",
+
+            2: "bottom-right",
+            3: "top-right"
+        }
+
+        for i in range(4):
+            left_center = self.cube.cube[4][1][0]
+            top_center = self.cube.cube[1][4][0]
+            current_pos = [3, 2]
+            left_corner = self.cube.cube[current_pos[0]][current_pos[1]][0]
+            current_pos[1] += 1
+            middle_corner = self.cube.cube[current_pos[0]][current_pos[1]][0]
+            current_pos[0] -= 1
+            top_corner = self.cube.cube[current_pos[0]][current_pos[1]][0]
+            temp_array = [left_corner, middle_corner, top_corner]
+
+            # Check if the corner is in right spot
+            if left_center not in temp_array or top_center not in temp_array:
+                self.cube.rotate_whole()
+                continue
+
+            correct_corners.append(dir_dict[i])
+            self.cube.rotate_whole()
+
+        return correct_corners
+
+    def is_done(self) -> bool:
+        # Loop over all the faces and check that all the squares match the center
+        for face in self.cube.sides_dict.keys():
+            if face == "back2":
+                continue
+
+            side = self.cube.get_side(face)
+            center_color = side[1][1][0]
+
+            for row in side:
+                for cell in row:
+                    if cell[0] != center_color:
+                        return False
+
+        return True
+
+    def is_bottom_right_solved(self) -> bool:
+        # Look at the front face bottom right corner to see if it is solved
+        front_bottom_middle = self.cube.cube[5][4][0]
+        bottom_top_middle = self.cube.cube[6][4][0]
+        right_bottom_middle = self.cube.cube[5][7][0]
+
+        # check top
+        if self.cube.cube[5][5][0] != front_bottom_middle:
+            return False
+
+        # check right
+        if self.cube.cube[5][6][0] != right_bottom_middle:
+            return False
+
+        # check bottom
+        if self.cube.cube[6][5][0] != bottom_top_middle:
+            return False
+
+        return True
+
+    def solve_bottom_right_corners(self):
+        # Put unsolved corner to bottom face right side and do right algo until corner solved
+        # First change perspective right
+
+        while True:
+            corners_solved = 0
+            # Keep sliding until bottom right corner not solved
+            # If rotates 4 times means all corners are solved
+            while self.is_bottom_right_solved():
+                if corners_solved == 4:
+                    return
+
+                self.cube.slide_long("left", 5, 5)
+                corners_solved += 1
+
+            while not self.is_bottom_right_solved():
+                self.right_algorithm()
+
+    def third_layer(self):
+        if self.is_done():
+            return
+
+        # Align the edges
+        self.align_third_layer_edges()
+        yellow_corners = self.get_correct_yellow_corners()
+
+        if self.is_done():
+            return
+
+        # If none of the corners are right
+        if len(yellow_corners) == 0:
+            self.niklas()
+            self.align_third_layer_edges()
+            yellow_corners = self.get_correct_yellow_corners()
+
+        # If less than 4 corners are correct
+        if len(yellow_corners) < 4:
+            while yellow_corners[0] != "bottom-left":
+                self.cube.rotate_whole()
+                yellow_corners = self.get_correct_yellow_corners()
+
+            while len(self.get_correct_yellow_corners()) < 4:
+                self.niklas()
+                self.align_third_layer_edges()
+
+        if self.is_done():
+            return
+
+        # Change perspective for corners and solve them
+        self.move_to_front("W5")
+        self.cube.change_perspective("up")
+        self.solve_bottom_right_corners()
+
+        # Slide the layer to right place
+        while not self.is_done():
+            self.cube.slide_long("right", 5, 5)
+
+    def finalize(self):
+        # To original orientation
+        self.move_to_front("W5")
+
+        while self.cube.cube[1][4][0] != "O":
+            self.cube.rotate_whole()
 
     def solve(self):
         # First make daisy
@@ -764,7 +924,6 @@ class Solver:
         self.white_cross()
 
         # White corners
-
         self.white_corners()
 
         # Second layer
@@ -775,3 +934,6 @@ class Solver:
 
         # Third layer
         self.third_layer()
+
+        # Fix orientation
+        self.finalize()
