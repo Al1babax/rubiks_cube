@@ -181,7 +181,7 @@ class SolverC:
     def daisy(self):
         # Make daisy with yellow center and whites on the side
         try:
-            self.change_center("Y5")
+            self.move_to_front("Y5")
         except:
             self.cube.show()
             raise ("Was not able to change center")
@@ -378,6 +378,44 @@ class SolverC:
             self.move_to_front("W5")
             self.cube.change_perspective("down")
 
+    def check_white_corners(self) -> bool:
+        def check_corners() -> bool:
+            for _ in range(4):
+                bottom_face = self.cube.get_side("bottom")
+                bottom_center_color = bottom_face[1][1][0]
+
+                for i in range(3):
+                    if i == 1:
+                        continue
+
+                    if bottom_face[2][i][0] != bottom_center_color:
+                        # False white corner
+                        self.cube.change_perspective("up")
+
+                        if i == 0:
+                            self.left_algorithm()
+                        elif i == 2:
+                            self.right_algorithm()
+
+                        self.move_to_front("Y5")
+                        return False
+
+            return True
+
+        # Returns true if everything ok
+        self.move_to_front("Y5")
+        if not check_corners():
+            return False
+
+        # Have to check the other side too
+        self.cube.rotate_whole()
+        self.cube.rotate_whole()
+
+        if not check_corners():
+            return False
+
+        return True
+
     def white_corners(self):
         # First make white cross bottom
         self.cube.change_perspective("right")
@@ -391,13 +429,16 @@ class SolverC:
             # if no targets are found check if white side is done, if not find the rogue square and move it to middle
             if len(targets) == 0:
                 if self.is_white_done():
-                    break
+                    # Make sure none of the white pieces were on wrong position in the beginning
+                    if self.check_white_corners():
+                        # Break if everything ok
+                        break
+                    else:
+                        # Continue if you need fixing
+                        continue
 
                 # Perform algo here to move the rogue square
-                # self.cube.show()
-
                 self.fix_rogue()
-                # self.cube.show()
                 self.change_center("Y5")
 
                 continue
