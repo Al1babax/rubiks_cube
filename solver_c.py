@@ -586,38 +586,35 @@ class SolverC:
             self.second_layer()
 
     def yellow_cross(self):
-        yellow_hooks = []
+        def find_hooks() -> bool:
+            front_face = self.cube.get_side("front")
+            flattened_face = []
 
-        def find_hooks(cur_pos: List, matrix: List[List], visited_nodes: List):
-            if len(yellow_hooks) != 0:
-                return False
-            elif len(visited_nodes) == 3:
-                yellow_hooks.append(visited_nodes.copy())
-                visited_nodes.pop()
+            for row in front_face:
+                for col in row:
+                    flattened_face.append(col)
+
+            # All possible hooks
+            hook_coordinates = [(1, 3), (1, 5), (3, 7), (5, 7)]
+
+            for i in range(len(flattened_face)):
+                if flattened_face[i][0] != "Y":
+                    continue
+
+                # Check if possible hook
+                for candidate in hook_coordinates:
+                    if candidate[0] == i and flattened_face[candidate[1]][0] == "Y":
+                        return True
+
+            return False
+
+        def is_hook_corner() -> bool:
+            front_face = self.cube.get_side("front")
+
+            if front_face[0][1][0] == "Y" and front_face[1][0][0] == "Y":
                 return True
-            elif cur_pos[0] < 0 or cur_pos[0] > 2 or cur_pos[1] < 0 or cur_pos[1] > 2:
-                # Out of bounds
-                return
-            elif matrix[cur_pos[0]][cur_pos[1]] in visited_nodes:
-                # Already visited node
-                return
 
-            if matrix[cur_pos[0]][cur_pos[1]][0] == "Y":
-                visited_nodes.append(matrix[cur_pos[0]][cur_pos[1]])
-            else:
-                return
-
-            # Go all directions, up, left, down, right
-            dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)]
-            for direction in dirs:
-                new_pos = [cur_pos[0] + direction[0], cur_pos[1] + direction[1]]
-                result = find_hooks(new_pos, matrix, visited_nodes)
-                if result:
-                    visited_nodes.pop()
-                    return
-                elif result is False:
-                    return
-
+            return False
 
         self.move_to_front("Y5")
 
@@ -637,11 +634,8 @@ class SolverC:
                 if front_side[row][col][0] == "Y":
                     index_with_yellow.append(order_num - 1)
 
-
-        find_hooks([1, 1], front_side, [])
-
         # Find symbol from worst to best
-        if len(yellow_hooks) != 0:
+        if find_hooks():
             current_big_symbol = "hook"
 
         # Check for line
@@ -649,10 +643,10 @@ class SolverC:
         horizontal_line = False
         if 1 in index_with_yellow and 7 in index_with_yellow:
             current_big_symbol = "line"
-            horizontal_line = True
+            vertical_line = True
         if 3 in index_with_yellow and 5 in index_with_yellow:
             current_big_symbol = "line"
-            vertical_line = True
+            horizontal_line = True
 
         if horizontal_line and vertical_line:
             current_big_symbol = "cross"
@@ -661,26 +655,270 @@ class SolverC:
             case "cross":
                 return
             case "line":
-                pass
-            case "hook":
-                pass
-            case "dot":
-                pass
+                # First make line horizontal
+                if vertical_line:
+                    self.cube.rotate_big("front")
 
-        print(current_big_symbol)
+                self.cube.change_perspective("up")
+                self.cube.rotate_big("front")
+                self.right_algorithm()
+
+                for _ in range(3):
+                    self.cube.rotate_big("front")
+
+                self.cube.change_perspective("down")
+
+            case "hook":
+                # Rotate the front until 3 of the 4 left top squares are yellow
+                while not is_hook_corner():
+                    self.cube.rotate_big("front")
+
+                self.cube.change_perspective("up")
+                self.cube.rotate_big("front")
+                self.right_algorithm()
+                self.right_algorithm()
+
+                for _ in range(3):
+                    self.cube.rotate_big("front")
+
+                self.cube.change_perspective("down")
+
+            case "dot":
+                self.cube.change_perspective("up")
+                self.cube.rotate_big("front")
+                self.right_algorithm()
+
+                for _ in range(3):
+                    self.cube.rotate_big("front")
+
+                self.cube.change_perspective("down")
+
+                # Recursive call
+                self.yellow_cross()
+
+    def niklas(self):
+        self.cube.slide_long("up", 5, 5)
+        for _ in range(3):
+            self.cube.rotate_big("front")
+
+        self.cube.slide_long("up", 3, 3)
+        self.cube.rotate_big("front")
+        self.cube.slide_long("down", 5, 5)
+        for _ in range(3):
+            self.cube.rotate_big("front")
+
+        self.cube.slide_long("down", 3, 3)
+
+    def sune(self):
+        self.cube.slide_long("up", 5, 5)
+        self.cube.rotate_big("front")
+        self.cube.slide_long("down", 5, 5)
+        self.cube.rotate_big("front")
+        self.cube.slide_long("up", 5, 5)
+
+        for _ in range(2):
+            self.cube.rotate_big("front")
+
+        self.cube.slide_long("down", 5, 5)
+
+    def top_layer_edges(self) -> List[str]:
+        directions = [(-1, 0), (1, 0), (0, 1), (0, -1)]
+        side_dict = {
+            0: "top",
+            1: "bottom",
+            2: "right",
+            3: "left"
+        }
+        # for example top, left, right, bottom
+        aligned_edges = []
+
+        # Go from center to directions to get the info
+        for direction_index in range(4):
+            current_position = [4, 4]
+            current_direction = directions[direction_index]
+
+            # Get into right position of the edge
+            for distance_index in range(2):
+                current_position[0] += current_direction[0]
+                current_position[1] += current_direction[1]
+
+            corner_square = self.cube.get_cube()[current_position[0]][current_position[1]]
+
+            current_position[0] += current_direction[0]
+            current_position[1] += current_direction[1]
+
+            center_square = self.cube.get_cube()[current_position[0]][current_position[1]]
+
+            # Make certain edge color and face center match
+            if corner_square[0] != center_square[0]:
+                continue
+
+            aligned_edges.append(side_dict[direction_index])
+
+        return aligned_edges
+
+    def align_third_layer_edges(self):
+        # Rotate the front until at least two top layer edges match
+        while True:
+            matching_top_edges = self.top_layer_edges()
+
+            if len(matching_top_edges) >= 2:
+                break
+
+            self.cube.rotate_big("front")
+
+        if len(matching_top_edges) == 4:
+            return
+
+        # Do sune algo to get two adjacent matching edges
+        if "top" in matching_top_edges and "bottom" in matching_top_edges:
+            self.sune()
+        elif "left" in matching_top_edges and "right" in matching_top_edges:
+            self.cube.rotate_whole()
+            self.sune()
+
+        # Rotate the cube until matching edges are on top and right
+        while "top" not in matching_top_edges or "right" not in matching_top_edges:
+            self.cube.rotate_whole()
+            matching_top_edges = self.top_layer_edges()
+
+        self.sune()
+
+        while len(matching_top_edges) < 4 and len(matching_top_edges) != 0:
+            self.cube.rotate_big("front")
+            matching_top_edges = self.top_layer_edges()
+
+    def get_correct_yellow_corners(self) -> List[str]:
+        # Get all the corners that are in right spot
+        correct_corners = []
+        dir_dict = {
+            0: "top-left",
+            1: "bottom-left",
+
+            2: "bottom-right",
+            3: "top-right"
+        }
+
+        for i in range(4):
+            left_center = self.cube.get_cube()[4][1][0]
+            top_center = self.cube.get_cube()[1][4][0]
+            current_pos = [3, 2]
+            left_corner = self.cube.get_cube()[current_pos[0]][current_pos[1]][0]
+            current_pos[1] += 1
+            middle_corner = self.cube.get_cube()[current_pos[0]][current_pos[1]][0]
+            current_pos[0] -= 1
+            top_corner = self.cube.get_cube()[current_pos[0]][current_pos[1]][0]
+            temp_array = [left_corner, middle_corner, top_corner]
+
+            # Check if the corner is in right spot
+            if left_center not in temp_array or top_center not in temp_array:
+                self.cube.rotate_whole()
+                continue
+
+            correct_corners.append(dir_dict[i])
+            self.cube.rotate_whole()
+
+        return correct_corners
+
+    def is_done(self) -> bool:
+        # Loop over all the faces and check that all the squares match the center
+        for face in self.sides_dict.keys():
+            if face == "back2":
+                continue
+
+            side = self.cube.get_side(face)
+            center_color = side[1][1][0]
+
+            for row in side:
+                for cell in row:
+                    if cell[0] != center_color:
+                        return False
+
+        return True
+
+    def is_bottom_right_solved(self) -> bool:
+        # Look at the front face bottom right corner to see if it is solved
+        front_bottom_middle = self.cube.get_cube()[5][4][0]
+        bottom_top_middle = self.cube.get_cube()[6][4][0]
+        right_bottom_middle = self.cube.get_cube()[5][7][0]
+
+        # check top
+        if self.cube.get_cube()[5][5][0] != front_bottom_middle:
+            return False
+
+        # check right
+        if self.cube.get_cube()[5][6][0] != right_bottom_middle:
+            return False
+
+        # check bottom
+        if self.cube.get_cube()[6][5][0] != bottom_top_middle:
+            return False
+
+        return True
+
+    def solve_bottom_right_corners(self):
+        # Put unsolved corner to bottom face right side and do right algo until corner solved
+        # First change perspective right
+
+        while True:
+            corners_solved = 0
+            # Keep sliding until bottom right corner not solved
+            # If rotates 4 times means all corners are solved
+            while self.is_bottom_right_solved():
+                if corners_solved == 4:
+                    return
+
+                self.cube.slide_long("left", 5, 5)
+                corners_solved += 1
+
+            while not self.is_bottom_right_solved():
+                self.right_algorithm()
 
     def third_layer(self):
-        cur_front = self.cube.get_side("front")
-        cur_target, row_col, direction = ("W8", 5, "h")
+        if self.is_done():
+            return
 
-        if direction == "h":
-            for cell in cur_front[row_col - 3]:
-                if cell in self.white_targets:
-                    return False
-        elif direction == "v":
-            for row in cur_front:
-                if row[row_col - 3] in self.white_targets:
-                    return False
+        # Align the edges
+        self.align_third_layer_edges()
+        yellow_corners = self.get_correct_yellow_corners()
+
+        if self.is_done():
+            return
+
+        # If none of the corners are right
+        if len(yellow_corners) == 0:
+            self.niklas()
+            self.align_third_layer_edges()
+            yellow_corners = self.get_correct_yellow_corners()
+
+        # If less than 4 corners are correct
+        if len(yellow_corners) < 4:
+            while yellow_corners[0] != "bottom-left":
+                self.cube.rotate_whole()
+                yellow_corners = self.get_correct_yellow_corners()
+
+            while len(self.get_correct_yellow_corners()) < 4:
+                self.niklas()
+                self.align_third_layer_edges()
+
+        if self.is_done():
+            return
+
+        # Change perspective for corners and solve them
+        self.move_to_front("W5")
+        self.cube.change_perspective("up")
+        self.solve_bottom_right_corners()
+
+        # Slide the layer to right place
+        while not self.is_done():
+            self.cube.slide_long("right", 5, 5)
+
+    def finalize(self):
+        # To original orientation
+        self.move_to_front("W5")
+
+        while self.cube.get_cube()[1][4][0] != "O":
+            self.cube.rotate_whole()
 
     def solve(self):
         # First make daisy
@@ -697,7 +935,9 @@ class SolverC:
 
         # Yellow cross
         self.yellow_cross()
-        self.cube.show()
 
         # Third layer
-        # self.third_layer()
+        self.third_layer()
+
+        # Fix orientation
+        self.finalize()

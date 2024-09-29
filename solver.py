@@ -562,7 +562,6 @@ class Solver:
 
             rotate_counter = 0
             new_edge, edge_positions = edge_info[0], edge_info[1]
-            # print(new_edge, edge_positions)
 
             self.change_side_and_rotate(new_edge, self.rotation_dir[new_edge])
 
