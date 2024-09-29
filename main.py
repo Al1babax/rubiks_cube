@@ -4,7 +4,6 @@ from solver_c import SolverC
 import time
 import cube_module
 
-
 def time_it(func):
     """Decorator to measure the runtime of a function."""
 
@@ -85,8 +84,9 @@ def main(run_speed_test=False, amount=100):
 
 
 if __name__ == '__main__':
+    # TO RUN MAIN_C YOU NEED CUSTOM MODULE
     speed_test_iterations = 1000
-    speed_test = True
+    speed_test = False
 
     main(speed_test, speed_test_iterations)
     main_c(speed_test, speed_test_iterations)
